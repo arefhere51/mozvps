@@ -192,11 +192,32 @@ fi
 work=$(mktemp -d /opt/.mozvps-stage.XXXXXX)
 mkdir -m 0700 "$work/git-home"
 say "Cloning only $REPOSITORY (branch $BRANCH)."
-env -i HOME="$work/git-home" PATH=/usr/bin:/bin LANG=C GIT_CONFIG_NOSYSTEM=1 \
+git_proxy=$(python3 - <<'PY'
+import json
+try:
+    with open('/var/lib/mozvps/preferences.json', encoding='utf-8') as f:
+        p=json.load(f)
+    if p.get('mozilla_proxy_enabled'):
+        host=str(p.get('mozilla_proxy_host') or '').strip()
+        port=p.get('mozilla_proxy_port')
+        if host and type(port) is int and 1 <= port <= 65535:
+            print(f'http://{host}:{port}')
+except Exception:
+    pass
+PY
+)
+git_clone_args=(--depth 1 --single-branch --no-tags --branch "$BRANCH" "$REPOSITORY" "$work/source")
+if ! env -i HOME="$work/git-home" PATH=/usr/bin:/bin LANG=C GIT_CONFIG_NOSYSTEM=1 \
     GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0 git -c core.hooksPath=/dev/null \
     -c credential.helper= -c http.followRedirects=false \
-    -c protocol.file.allow=never clone --depth 1 --single-branch \
-    --no-tags --branch "$BRANCH" "$REPOSITORY" "$work/source" </dev/null
+    -c protocol.file.allow=never clone "${git_clone_args[@]}" </dev/null; then
+    [[ -n $git_proxy ]] || die 'GitHub clone failed and no saved HTTP proxy is available.'
+    say 'Direct GitHub clone failed; retrying through the saved HTTP proxy.'
+    env -i HOME="$work/git-home" PATH=/usr/bin:/bin LANG=C GIT_CONFIG_NOSYSTEM=1 \
+        GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0 git -c core.hooksPath=/dev/null \
+        -c credential.helper= -c http.followRedirects=false -c http.proxy="$git_proxy" \
+        -c protocol.file.allow=never clone "${git_clone_args[@]}" </dev/null
+fi
 
 # Do not assume the requested branch contains the panel or deployment files.
 for rel in server.py worker.py auth_helper.py mozvpn.py requirements.txt install.sh \
