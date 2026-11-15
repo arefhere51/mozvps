@@ -27,7 +27,15 @@ privileged() {
 
 python_app() {
     if [[ -x "$APP/venv/bin/python" && -f "$APP/server.py" ]]; then
-        privileged env MOZVPS_DATA="$DATA" HOME="$DATA" "$APP/venv/bin/python" "$APP/server.py" "$@"
+        if (( EUID == 0 )) && [[ "${1:-}" == "--add-account" || "${1:-}" == "--list-accounts" ]]; then
+            command -v runuser >/dev/null 2>&1 || { printf 'Error: runuser is required for account management.\n' >&2; return 1; }
+            [[ -d "$DATA" ]] && chown -R mozvps:mozvps "$DATA" 2>/dev/null || true
+            runuser -u mozvps -- env MOZVPS_DATA="$DATA" HOME="$DATA" "$APP/venv/bin/python" "$APP/server.py" "$@"
+        elif (( EUID != 0 )) && [[ "${1:-}" == "--add-account" || "${1:-}" == "--list-accounts" ]] && command -v sudo >/dev/null 2>&1; then
+            sudo -u mozvps -- env MOZVPS_DATA="$DATA" HOME="$DATA" "$APP/venv/bin/python" "$APP/server.py" "$@"
+        else
+            privileged env MOZVPS_DATA="$DATA" HOME="$DATA" "$APP/venv/bin/python" "$APP/server.py" "$@"
+        fi
     else
         printf 'Error: MozVPS installation was not found at %s\n' "$APP" >&2
         return 1

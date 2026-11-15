@@ -214,6 +214,10 @@
     renderAccounts(accounts);
     if (!state.locationsDirty) renderLocations(locations);
     if (!state.panelPortDirty && document.activeElement !== $('panel-port')) $('panel-port').value = data.panel_port == null ? '' : String(data.panel_port);
+    const proxy = data.mozilla_proxy && typeof data.mozilla_proxy === 'object' ? data.mozilla_proxy : {};
+    if (document.activeElement !== $('mozilla-proxy-host')) $('mozilla-proxy-host').value = proxy.host || '127.0.0.1';
+    if (document.activeElement !== $('mozilla-proxy-port')) $('mozilla-proxy-port').value = proxy.port == null ? '8080' : String(proxy.port);
+    $('mozilla-proxy-enabled').checked = proxy.enabled === true;
   }
 
   function renderAccounts(accounts) {
@@ -465,6 +469,20 @@
         applySession(session);
         if (!state.authenticated) showLogin();
       } catch (error) { showNotice('رمز تغییر کرد، اما دریافت وضعیت نشست ناموفق بود: ' + error.message, true); }
+    });
+  });
+
+  $('mozilla-proxy-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    const button = event.currentTarget.querySelector('button[type="submit"]');
+    withButton(button, async () => {
+      await api('/api/mozilla-proxy', { method: 'POST', body: {
+        enabled: $('mozilla-proxy-enabled').checked,
+        host: $('mozilla-proxy-host').value.trim(),
+        port: Number($('mozilla-proxy-port').value)
+      }});
+      showNotice('تنظیم پروکسی Mozilla ذخیره شد.');
+      await refreshStatus();
     });
   });
 

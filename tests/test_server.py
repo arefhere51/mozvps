@@ -112,6 +112,21 @@ class PanelTest(unittest.TestCase):
         self.assertEqual(self.req('/api/status')[0], 200)
         self.assertEqual(json.loads((self.data / 'preferences.json').read_text())['panel_port'], newport)
 
+    def test_mozilla_proxy_toggle_persists_and_is_returned_in_status(self):
+        self.login()
+        status, body = self.req('/api/mozilla-proxy', 'POST',
+                                {'enabled': True, 'host': '127.0.0.1', 'port': 18080}, self.csrf)
+        self.assertEqual(status, 200, body)
+        status, body = self.req('/api/status')
+        self.assertEqual(status, 200)
+        self.assertEqual(body['mozilla_proxy'], {'enabled': True, 'host': '127.0.0.1', 'port': 18080})
+        saved = json.loads((self.data / 'preferences.json').read_text())
+        self.assertTrue(saved['mozilla_proxy_enabled'])
+        self.assertEqual(saved['mozilla_proxy_port'], 18080)
+        status, _ = self.req('/api/mozilla-proxy', 'POST',
+                             {'enabled': False, 'host': '127.0.0.1', 'port': 18080}, self.csrf)
+        self.assertEqual(status, 200)
+
 
 if __name__ == '__main__':
     unittest.main()

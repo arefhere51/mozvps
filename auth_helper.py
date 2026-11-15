@@ -115,6 +115,14 @@ def authenticate(request):
     # This is a separate process, so the upstream global config is isolated.
     import mozvpn
 
+    proxy = os.environ.get('MOZVPN_API_PROXY', '').strip()
+    if proxy:
+        if not (proxy.startswith('http://') or proxy.startswith('https://')):
+            raise SafeError('invalid_proxy', 'The configured Mozilla proxy must use http:// or https://.')
+        mozvpn.set_api_proxy(proxy)
+    else:
+        mozvpn.set_api_proxy('')
+
     fixed_code = None
     secret = None
     if totp:

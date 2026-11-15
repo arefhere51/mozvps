@@ -48,6 +48,8 @@ Initial password: admin
 
 Change the initial password immediately. The panel can configure its port, manage service state, add or remove Mozilla accounts, configure location ports, show quota information, and display service events.
 
+The Persian panel also provides a Mozilla HTTP proxy switch. Enter the proxy host and port, enable it, and save. New account authentication and the worker's Mozilla control-plane requests then use `http://HOST:PORT`. Disable the switch and save to return to direct access; an active worker is restarted so the change takes effect. This proxy is for Mozilla control-plane traffic and is separate from the public SOCKS5 listeners.
+
 ### TLS on the same port
 
 Public HTTP does not encrypt panel or Mozilla credentials. Account creation through public HTTP is intentionally blocked. The application can terminate TLS directly on port `1234`, so port `443` is not required. Copy `deploy/mozvps-tls.conf.example` to a systemd drop-in after making the certificate readable by the `mozvps` service user:

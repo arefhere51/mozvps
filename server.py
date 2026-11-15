@@ -102,6 +102,9 @@ class Controller:
             self.preferences = {}
         self.preferences.setdefault('panel_port', 1234)
         self.preferences.setdefault('desired', True)
+        self.preferences.setdefault('mozilla_proxy_enabled', False)
+        self.preferences.setdefault('mozilla_proxy_host', '127.0.0.1')
+        self.preferences.setdefault('mozilla_proxy_port', 8080)
         # An existing damaged auth file must not silently reset to admin.
         if not AUTH.exists():
             write_json(AUTH, password_record('admin'))
@@ -112,6 +115,15 @@ class Controller:
 
     def prefs_save(self):
         write_json(PREFS, self.preferences)
+
+    def mozilla_proxy_url(self):
+        if not self.preferences.get('mozilla_proxy_enabled'):
+            return ''
+        host = str(self.preferences.get('mozilla_proxy_host') or '').strip()
+        port = self.preferences.get('mozilla_proxy_port')
+        if not host or type(port) is not int or not 1 <= port <= 65535:
+            return ''
+        return f'http://{host}:{port}'
 
     def accounts(self):
         data = read_json(CORE, {})
@@ -204,7 +216,31 @@ class Controller:
             detail += ' هشدار: پراکسی شبکه‌ای بدون رمز است؛ دسترسی آن را با فایروال محدود کنید.'
         return {'service': service, 'detail': detail, 'accounts': self.accounts(),
                 'locations': loc,
-                'panel_port': self.preferences['panel_port']}
+                'panel_port': self.preferences['panel_port'],
+                'mozilla_proxy': {'enabled': bool(self.preferences.get('mozilla_proxy_enabled')),
+                                  'host': self.preferences.get('mozilla_proxy_host', '127.0.0.1'),
+                                  'port': self.preferences.get('mozilla_proxy_port', 8080)}}
+
+    def save_mozilla_proxy(self, enabled, host, port):
+        if not isinstance(enabled, bool):
+            raise ValueError('Proxy enabled state is invalid.')
+        host = str(host or '').strip()
+        if not host or any(ch in host for ch in '\r\n\x00 /'):
+            raise ValueError('Proxy host is invalid.')
+        try:
+            port = int(port)
+        except (TypeError, ValueError):
+            raise ValueError('Proxy port is invalid.')
+        if not 1 <= port <= 65535:
+            raise ValueError('Proxy port must be between 1 and 65535.')
+        with self.lock:
+            self.preferences.update({'mozilla_proxy_enabled': enabled,
+                                     'mozilla_proxy_host': host,
+                                     'mozilla_proxy_port': port})
+            self.prefs_save()
+            event('Mozilla HTTP proxy settings updated.')
+            if self.worker is not None and self.worker.poll() is None:
+                self.restart()
 
     def add_account(self, email, password, totp):
         email = str(email or '').strip().lower()
@@ -223,9 +259,15 @@ class Controller:
                 request = json.dumps({'email': email, 'password': password, 'totp': totp,
                                       'config_path': temp_config}, ensure_ascii=False)
                 try:
+                    child_env = os.environ.copy()
+                    proxy = self.mozilla_proxy_url()
+                    if proxy:
+                        child_env['MOZVPN_API_PROXY'] = proxy
+                    else:
+                        child_env.pop('MOZVPN_API_PROXY', None)
                     proc = subprocess.run([sys.executable, str(ROOT / 'auth_helper.py')],
                                           input=request + '\n', text=True, stdout=subprocess.PIPE,
-                                          stderr=subprocess.DEVNULL, timeout=180, cwd=str(ROOT))
+                                          stderr=subprocess.DEVNULL, timeout=180, cwd=str(ROOT), env=child_env)
                     result = json.loads(proc.stdout)
                 except subprocess.TimeoutExpired:
                     result = {'ok': False, 'error': 'زمان ورود تمام شد؛ محدودیت شبکه یا تأیید موزیلا را بررسی کنید.'}
@@ -486,6 +528,9 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError('پورت باید بین ۱۰۲۴ و ۶۵۵۳۵ باشد.')
                 change_panel_port(port)
                 return self.reply(200, {'ok': True, 'message': 'پورت پنل تغییر کرد؛ از نشانی جدید استفاده کنید.'})
+            if path == '/api/mozilla-proxy':
+                CTRL.save_mozilla_proxy(data.get('enabled'), data.get('host'), data.get('port'))
+                return self.reply(200, {'ok': True, 'message': 'تنظیم پروکسی Mozilla ذخیره شد.'})
             return self.reply(404, {'error': 'مسیر پیدا نشد.'})
         except ValueError as e:
             return self.reply(400, {'error': str(e)})
@@ -583,13 +628,14 @@ def cli_add_account():
     password = getpass.getpass('Password: ')
     totp = getpass.getpass('TOTP code or secret (optional): ')
     try:
-        print(CTRL.add_account(email, password, totp))
+        CTRL.add_account(email, password, totp)
+        print('Account authenticated and saved. The panel will show it after refresh.')
         return 0
     except (EOFError, KeyboardInterrupt):
         print('\nCancelled.')
         return 130
     except ValueError as exc:
-        print(f'Error: {exc}', file=sys.stderr)
+        print(f'Account authentication failed: {exc}', file=sys.stderr)
         return 1
 
 

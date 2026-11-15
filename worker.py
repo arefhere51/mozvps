@@ -259,6 +259,17 @@ def main():
     for name in ("MOZVPN_EMAIL", "MOZVPN_PASSWORD", "MOZVPN_SESSION_TOKEN",
                  "MOZVPN_TOTP", "MOZVPN_TOTP_SECRET"):
         os.environ.pop(name, None)
+    proxy_url = ''
+    try:
+        with (directory / "preferences.json").open("r", encoding="utf-8") as source:
+            preferences = json.load(source)
+        if preferences.get('mozilla_proxy_enabled'):
+            host = str(preferences.get('mozilla_proxy_host') or '').strip()
+            port = preferences.get('mozilla_proxy_port')
+            if host and type(port) is int and 1 <= port <= 65535 and not any(ch in host for ch in '\r\n\x00 /'):
+                proxy_url = f'http://{host}:{port}'
+    except (OSError, ValueError, TypeError, AttributeError):
+        _diagnostic("could not read Mozilla proxy settings.")
     mozvpn.port_for_location = _panel_port_for_location
     mozvpn.BuiltinProxyEngine.build_proxies = _panel_build_proxies
     mozvpn.BuiltinProxyEngine.start_all = _panel_start_all
@@ -268,6 +279,8 @@ def main():
                 "--proxy-type", "socks5", "--auto-rotate", "--local-proxy",
                 "--local-proxy-engine", "builtin", "--listen", bind,
                 "--no-dns-relay", "--no-input", "--no-save"]
+    if proxy_url:
+        sys.argv.extend(["--api-proxy", proxy_url])
     # Upstream prints proxyPass/JWT and generated TOTP; suppress ALL of its
     # output instead of trying to recognize secrets in arbitrary log lines.
     # Non-tty stdin is also needed because upstream may prompt on a real tty

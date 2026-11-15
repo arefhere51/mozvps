@@ -104,6 +104,15 @@ class WorkerTests(unittest.TestCase):
             record = json.loads(Path(d, 'temp.json').read_text())['accounts']['test@example.test']
             self.assertEqual(record['totp_secret'], secret)
 
+    def test_auth_helper_applies_configured_http_proxy(self):
+        with tempfile.TemporaryDirectory() as d, patch.dict(os.environ, {'MOZVPS_DATA': d, 'MOZVPN_API_PROXY': 'http://127.0.0.1:18080'}), \
+             patch.object(mozvpn, '_CFG', None), patch.object(mozvpn, 'set_api_proxy') as set_proxy, \
+             patch.object(mozvpn, 'fxa_login', return_value='aabbccdd'), contextlib.redirect_stdout(io.StringIO()):
+            result = auth_helper.authenticate({'email': 'test@example.test', 'password': 'demo-secret',
+                                               'totp': '', 'config_path': str(Path(d, 'temp.json'))})
+            self.assertTrue(result['ok'])
+            set_proxy.assert_called_once_with('http://127.0.0.1:18080')
+
 
 if __name__ == '__main__':
     unittest.main()
