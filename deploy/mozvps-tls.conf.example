@@ -1,0 +1,5 @@
+# Copy to /etc/systemd/system/mozvps.service.d/tls.conf
+# after placing the certificate files where the mozvps user can read them.
+[Service]
+Environment=MOZVPS_PANEL_TLS_CERT=/var/lib/mozvps/tls/fullchain.pem
+Environment=MOZVPS_PANEL_TLS_KEY=/var/lib/mozvps/tls/privkey.pem

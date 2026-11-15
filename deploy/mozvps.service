@@ -1,0 +1,36 @@
+[Unit]
+Description=MozVPS panel and VPN backend
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=mozvps
+Group=mozvps
+WorkingDirectory=/opt/mozvps
+Environment=MOZVPS_DATA=/var/lib/mozvps
+Environment=HOME=/var/lib/mozvps
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/mozvps/venv/bin/python /opt/mozvps/server.py
+Restart=on-failure
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=30
+UMask=0077
+
+# The application and all its children can write persistent state only here.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/mozvps
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

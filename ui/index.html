@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>مدیریت اتصال | Mozilla VPS</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <svg class="svg-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M16 4.3a4 4 0 0 1 0 7.4M22 21v-2a4 4 0 0 0-3-3.9"/><circle cx="10.5" cy="7" r="4"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m7 9 3 3-3 3M13 15h4"/></symbol>
+    <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 2v10M6.3 5.7a8 8 0 1 0 11.4 0"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.7 8a7 7 0 0 1 11.8-2L20 12M4 12l2.5 6A7 7 0 0 0 18.3 16"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.7 3.2 7.9 7.5 9.5 4.3-1.6 7.5-4.8 7.5-9.5V6L12 3z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+    <symbol id="i-exit" viewBox="0 0 24 24"><path d="M14 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5M10 8l-4 4 4 4M6 12h10"/></symbol>
+    <symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19L12 3zM12 9v5M12 17h.01"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 4 12 2.5-6h5"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="2.5"/></symbol>
+  </svg>
+
+  <div id="notice" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <div id="boot-view" class="boot-page" role="status"><span class="brand-mark"><svg class="icon"><use href="#i-shield"/></svg></span><span>در حال بررسی نشست...</span></div>
+
+  <main id="login-view" class="login-page" hidden>
+    <section class="login-card" aria-labelledby="login-title">
+      <div class="login-topline"><span>کنترل‌پنل شخصی</span><span class="tiny-label" dir="ltr">MOZILLA VPS / SOCKS5</span></div>
+      <div class="brand brand-login"><span class="brand-mark"><svg class="icon"><use href="#i-shield"/></svg></span><span><strong>Mozilla VPS</strong><small>مدیریت اتصال امن</small></span></div>
+      <div class="login-heading"><span class="eyebrow">فضای مدیریت شما</span><h1 id="login-title">خوش آمدید<span class="accent-dot">.</span></h1><p>برای مدیریت سرویس، رمز عبور پنل را وارد کنید.</p></div>
+      <div id="login-security-warning" class="warning login-warning" hidden><svg class="icon"><use href="#i-warning"/></svg><p></p></div>
+      <form id="login-form" class="form-stack">
+        <label for="login-password">رمز عبور مدیریت</label>
+        <div class="password-wrap"><input id="login-password" type="password" autocomplete="current-password" placeholder="رمز عبور پنل" required autofocus><button type="button" class="reveal" data-reveal="login-password" aria-label="نمایش رمز عبور"><svg class="icon"><use href="#i-eye"/></svg></button></div>
+        <p class="field-hint">ورود فقط با رمز عبور انجام می‌شود و نام کاربری لازم نیست.</p>
+        <p id="login-error" class="form-error" role="alert" hidden></p>
+        <button class="button button-primary button-wide" type="submit">ورود به پنل <svg class="icon"><use href="#i-arrow"/></svg></button>
+      </form>
+      <div class="login-footer"><svg class="icon"><use href="#i-lock"/></svg><span>پنل خودمیزبان · اطلاعات شما در اختیار خودتان</span></div>
+    </section>
+    <p class="login-caption">یک نمای ساده برای مدیریت اتصال‌های شما</p>
+  </main>
+
+  <div id="app-view" class="app-shell" hidden>
+    <aside class="sidebar" aria-label="منوی اصلی">
+      <a class="brand sidebar-brand" href="#overview"><span class="brand-mark"><svg class="icon"><use href="#i-shield"/></svg></span><span><strong>Mozilla VPS</strong><small>مدیریت اتصال</small></span></a>
+      <div class="nav-label">میز کار</div>
+      <nav class="nav-list">
+        <a class="nav-link active" href="#overview"><svg class="icon"><use href="#i-grid"/></svg><span>نمای کلی</span><span class="nav-active-dot"></span></a>
+        <a class="nav-link" href="#accounts"><svg class="icon"><use href="#i-users"/></svg><span>حساب‌ها</span></a>
+        <a class="nav-link" href="#locations"><svg class="icon"><use href="#i-globe"/></svg><span>موقعیت‌ها</span></a>
+        <a class="nav-link" href="#settings"><svg class="icon"><use href="#i-sliders"/></svg><span>تنظیمات پنل</span></a>
+        <a class="nav-link" href="#logs"><svg class="icon"><use href="#i-terminal"/></svg><span>گزارش‌ها</span></a>
+      </nav>
+      <div class="sidebar-bottom"><div class="sidebar-note"><span class="sidebar-note-icon"><svg class="icon"><use href="#i-lock"/></svg></span><div><strong>کنترل در دستان شماست</strong><p>پنل به صورت خودمیزبان اجرا می‌شود.</p></div></div><button id="logout-button" class="logout-button" type="button"><svg class="icon"><use href="#i-exit"/></svg> خروج از پنل</button></div>
+    </aside>
+
+    <div class="main-area">
+      <header class="topbar"><div class="breadcrumb"><span>میز کار</span><span class="breadcrumb-divider">/</span><strong>نمای کلی</strong></div><div class="topbar-actions"><span class="topbar-tag"><span class="tiny-dot"></span> پنل مدیریت</span><button id="refresh-button" type="button" class="icon-button" title="به‌روزرسانی وضعیت" aria-label="به‌روزرسانی وضعیت"><svg class="icon"><use href="#i-refresh"/></svg></button></div></header>
+      <main class="content" id="overview">
+        <div class="page-heading"><div><div class="eyebrow"><span class="eyebrow-line"></span> پنل مدیریت سرویس</div><h1>همه چیز تحت کنترل است<span class="accent-dot">.</span></h1><p>اتصال‌ها، حساب‌ها و وضعیت سرویس را یک‌جا مدیریت کنید.</p></div><span class="heading-chip"><svg class="icon"><use href="#i-activity"/></svg> وضعیت زنده</span></div>
+
+        <div id="security-warning" class="warning security-banner" role="alert" hidden><svg class="icon"><use href="#i-warning"/></svg><div><strong>توجه به امنیت پنل</strong><p></p></div><a href="#settings">تنظیمات امنیتی <span aria-hidden="true">←</span></a></div>
+        <div id="status-error" class="warning status-warning" role="alert" hidden><svg class="icon"><use href="#i-warning"/></svg><p></p></div>
+
+        <section class="summary-grid" aria-label="خلاصه وضعیت">
+          <article class="summary-card summary-service"><div class="summary-top"><span class="summary-icon purple"><svg class="icon"><use href="#i-power"/></svg></span><span id="service-badge" class="badge neutral"><span class="badge-dot"></span> در حال بررسی</span></div><div class="summary-label">وضعیت سرویس</div><strong id="service-title" class="summary-value">در حال دریافت...</strong><p id="service-detail" class="summary-description">در حال دریافت اطلاعات از سرور</p></article>
+          <article class="summary-card"><div class="summary-top"><span class="summary-icon blue"><svg class="icon"><use href="#i-users"/></svg></span><span class="metric-index">۰۱</span></div><div class="summary-label">حساب‌ها</div><strong id="account-count" class="summary-value">—</strong><p id="current-account-summary" class="summary-description">حساب فعال مشخص نشده است.</p></article>
+          <article class="summary-card"><div class="summary-top"><span class="summary-icon mint"><svg class="icon"><use href="#i-globe"/></svg></span><span class="metric-index">۰۲</span></div><div class="summary-label">موقعیت‌های فعال</div><strong id="location-count" class="summary-value">—</strong><p class="summary-description">مسیرهای فعال SOCKS5</p></article>
+        </section>
+
+        <section class="panel service-panel" aria-labelledby="service-heading"><div class="section-heading"><div class="section-title-wrap"><span class="section-icon purple"><svg class="icon"><use href="#i-activity"/></svg></span><div><span class="overline">مدیریت اتصال</span><h2 id="service-heading">کنترل سرویس</h2></div></div><span class="outlined-tag">SOCKS5</span></div><div class="service-controls"><div><strong>سرویس پروکسی</strong><p>اجرای سرویس را شروع، متوقف یا دوباره راه‌اندازی کنید.</p></div><div class="button-group"><button class="button button-primary service-action" type="button" data-action="start"><svg class="icon"><use href="#i-power"/></svg> شروع</button><button class="button button-light service-action" type="button" data-action="stop">توقف</button><button class="button button-light service-action" type="button" data-action="restart"><svg class="icon"><use href="#i-refresh"/></svg> راه‌اندازی مجدد</button></div></div></section>
+
+        <section id="accounts" class="panel section-panel" aria-labelledby="accounts-heading"><div class="section-heading"><div class="section-title-wrap"><span class="section-icon blue"><svg class="icon"><use href="#i-users"/></svg></span><div><span class="overline">حساب‌های موزیلا</span><h2 id="accounts-heading">حساب‌ها و سهمیه</h2></div></div><span id="accounts-counter" class="subtle-count">۰ حساب</span></div><p class="section-intro">حساب‌های خود را مدیریت کنید و سهمیه باقی‌مانده هر حساب را ببینید.</p><div id="accounts-list" class="account-list"><p class="empty-state">در حال دریافت حساب‌ها...</p></div><details id="add-account-details" class="add-account"><summary><span><span class="plus-circle"><svg class="icon"><use href="#i-plus"/></svg></span> افزودن حساب موزیلا</span><span class="summary-expand">+</span></summary><form id="account-form" class="account-form form-grid"><div class="field"><label for="account-email">ایمیل حساب موزیلا</label><input id="account-email" type="email" dir="ltr" autocomplete="username" placeholder="name@example.com" required></div><div class="field"><label for="account-password">رمز عبور حساب موزیلا</label><input id="account-password" type="password" dir="ltr" autocomplete="new-password" placeholder="رمز عبور" required></div><div class="field field-full"><label for="account-totp">کد یا کلید تأیید دومرحله‌ای <span class="optional">(اختیاری)</span></label><input id="account-totp" type="text" dir="ltr" autocomplete="off" spellcheck="false" placeholder="کد ۶ رقمی یا کلید TOTP"><p class="field-hint">می‌توانید کد ۶ رقمی یا کلید محرمانه TOTP را وارد کنید. کلید محرمانه برای اتصال مجدد خودکار است؛ موزیلا ممکن است تأیید دستی یا کد یک‌بارمصرف بخواهد.</p></div><p id="account-transport-hint" class="form-error field-full" hidden>برای ارسال اطلاعات حساب موزیلا، پنل را از طریق HTTPS باز کنید.</p><div class="form-actions field-full"><button class="button button-primary" type="submit"><svg class="icon"><use href="#i-plus"/></svg> افزودن حساب</button></div></form></details></section>
+
+        <section id="locations" class="panel section-panel" aria-labelledby="locations-heading"><div class="section-heading"><div class="section-title-wrap"><span class="section-icon mint"><svg class="icon"><use href="#i-globe"/></svg></span><div><span class="overline">مسیرهای اتصال</span><h2 id="locations-heading">موقعیت‌ها و پورت‌ها</h2></div></div><span class="outlined-tag">SOCKS5</span></div><p class="section-intro">برای هر موقعیت، پورت محلی را تعیین و مسیر دلخواه را فعال کنید.</p><form id="locations-form"><div class="location-table-header" aria-hidden="true"><span>موقعیت</span><span>پورت</span><span>وضعیت</span></div><div id="locations-list" class="location-list"><p class="empty-state">در حال دریافت موقعیت‌ها...</p></div><div class="panel-footer"><span id="locations-hint">تغییرات پس از ذخیره اعمال می‌شوند.</span><button class="button button-primary" type="submit" id="save-locations">ذخیره موقعیت‌ها</button></div></form></section>
+
+        <section id="settings" class="settings-section" aria-labelledby="settings-heading"><div class="section-standalone-heading"><div><span class="overline">تنظیمات</span><h2 id="settings-heading">پنل و امنیت</h2></div><p>تنظیمات دسترسی مدیریت را به‌روز نگه دارید.</p></div><div class="settings-grid"><article class="panel settings-card"><div class="settings-card-head"><span class="section-icon lavender"><svg class="icon"><use href="#i-sliders"/></svg></span><div><h3>پورت پنل</h3><p>آدرس دسترسی به پنل مدیریت</p></div></div><form id="panel-port-form" class="form-stack compact-form"><label for="panel-port">شماره پورت</label><div class="inline-form"><input id="panel-port" type="number" dir="ltr" inputmode="numeric" min="1" max="65535" required><button class="button button-light" type="submit">ذخیره</button></div><p class="field-hint">بعد از تغییر، ممکن است لازم باشد با پورت جدید به پنل متصل شوید.</p></form></article><article class="panel settings-card"><div class="settings-card-head"><span class="section-icon peach"><svg class="icon"><use href="#i-lock"/></svg></span><div><h3>رمز عبور مدیریت</h3><p>از یک رمز قوی و منحصربه‌فرد استفاده کنید.</p></div></div><form id="password-form" class="form-stack compact-form"><label for="current-password">رمز عبور فعلی</label><input id="current-password" type="password" autocomplete="current-password" required><label for="new-password">رمز عبور جدید</label><input id="new-password" type="password" autocomplete="new-password" required><button class="button button-light password-submit" type="submit">تغییر رمز عبور</button></form></article></div></section>
+
+        <section id="logs" class="panel section-panel logs-panel" aria-labelledby="logs-heading"><div class="section-heading"><div class="section-title-wrap"><span class="section-icon dark"><svg class="icon"><use href="#i-terminal"/></svg></span><div><span class="overline">رویدادهای سرویس</span><h2 id="logs-heading">گزارش‌ها</h2></div></div><button id="refresh-logs" class="button button-light button-small" type="button"><svg class="icon"><use href="#i-refresh"/></svg> به‌روزرسانی</button></div><p class="section-intro">آخرین پیام‌های سرویس را اینجا ببینید.</p><pre id="logs-output" class="logs-output" dir="ltr">در حال دریافت گزارش‌ها...</pre></section>
+        <footer class="footer"><span>ساخته شده برای کنترل ساده‌تر اتصال‌ها</span><span dir="ltr">MOZILLA VPS <span class="footer-dot">●</span> SELF-HOSTED</span></footer>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
