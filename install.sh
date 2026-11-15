@@ -125,99 +125,19 @@ say 'Installing system prerequisites (git, Python, venv and native-build librari
 export DEBIAN_FRONTEND=noninteractive
 apt-get update </dev/null
 apt-get install -y --no-install-recommends \
-    ca-certificates curl git python3 python3-venv python3-dev \
+    ca-certificates git python3 python3-venv python3-dev \
     build-essential pkg-config libssl-dev libffi-dev zlib1g-dev libjpeg-dev </dev/null
-
-# The worker prefers sing-box for HTTP/2/HTTP/3 data-plane transport. Resolve
-# the current upstream Linux asset by architecture instead of pinning a stale
-# release URL into the installer.
-if ! command -v sing-box >/dev/null 2>&1; then
-    say 'Installing sing-box transport engine.'
-    sb_arch=$(case "$(uname -m)" in
-        x86_64|amd64) printf 'amd64';;
-        aarch64|arm64) printf 'arm64';;
-        armv7l|armv7) printf 'armv7';;
-        *) die "Unsupported sing-box architecture: $(uname -m)";;
-    esac)
-    sb_url=$(python3 - "$sb_arch" <<'PY'
-import json, sys, urllib.request
-arch = sys.argv[1]
-req = urllib.request.Request(
-    'https://api.github.com/repos/SagerNet/sing-box/releases/latest',
-    headers={'User-Agent': 'mozvps-installer'})
-with urllib.request.urlopen(req, timeout=20) as response:
-    release = json.load(response)
-for asset in release.get('assets', []):
-    name = asset.get('name', '')
-    if name.endswith('.tar.gz') and ('linux-' + arch) in name and 'amd64v3' not in name:
-        print(asset['browser_download_url'])
-        break
-else:
-    raise SystemExit('No sing-box Linux asset found for ' + arch)
-PY
-    )
-    sb_tmp=$(mktemp -d /tmp/mozvps-singbox.XXXXXX)
-    # Some Iranian VPS networks reset GitHub release-assets TLS while raw
-    # GitHub remains reachable. If the panel already has an HTTP proxy, use
-    # it only for this dependency download; application data settings are not
-    # changed by the installer.
-    if ! curl -fsSL --retry 3 "$sb_url" -o "$sb_tmp/sing-box.tar.gz"; then
-        sb_proxy=$(python3 - <<'PY'
-import json
-try:
-    with open('/var/lib/mozvps/preferences.json', encoding='utf-8') as f:
-        p=json.load(f)
-    if p.get('mozilla_proxy_enabled'):
-        host=str(p.get('mozilla_proxy_host') or '').strip()
-        port=p.get('mozilla_proxy_port')
-        if host and type(port) is int and 1 <= port <= 65535:
-            print(f'http://{host}:{port}')
-except Exception:
-    pass
-PY
-)
-        [[ -n $sb_proxy ]] || die 'Direct download of sing-box failed and no saved HTTP proxy is available.'
-        say 'Direct GitHub asset download failed; retrying sing-box through the saved HTTP proxy.'
-        curl -fsSL --retry 3 -x "$sb_proxy" "$sb_url" -o "$sb_tmp/sing-box.tar.gz"
-    fi
-    tar -xzf "$sb_tmp/sing-box.tar.gz" -C "$sb_tmp"
-    sb_bin=$(find "$sb_tmp" -type f -name sing-box -perm -u+x -print -quit)
-    [[ -n $sb_bin ]] || die 'Downloaded sing-box archive did not contain an executable.'
-    install -o root -g root -m 0755 "$sb_bin" /usr/local/bin/sing-box
-    rm -rf "$sb_tmp"
-fi
 
 # A private HOME and disabled Git system configuration prevent user-configured
 # insteadOf rewrites, credentials and hooks from redirecting the fixed URL.
 work=$(mktemp -d /opt/.mozvps-stage.XXXXXX)
 mkdir -m 0700 "$work/git-home"
 say "Cloning only $REPOSITORY (branch $BRANCH)."
-git_proxy=$(python3 - <<'PY'
-import json
-try:
-    with open('/var/lib/mozvps/preferences.json', encoding='utf-8') as f:
-        p=json.load(f)
-    if p.get('mozilla_proxy_enabled'):
-        host=str(p.get('mozilla_proxy_host') or '').strip()
-        port=p.get('mozilla_proxy_port')
-        if host and type(port) is int and 1 <= port <= 65535:
-            print(f'http://{host}:{port}')
-except Exception:
-    pass
-PY
-)
-git_clone_args=(--depth 1 --single-branch --no-tags --branch "$BRANCH" "$REPOSITORY" "$work/source")
-if ! env -i HOME="$work/git-home" PATH=/usr/bin:/bin LANG=C GIT_CONFIG_NOSYSTEM=1 \
+env -i HOME="$work/git-home" PATH=/usr/bin:/bin LANG=C GIT_CONFIG_NOSYSTEM=1 \
     GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0 git -c core.hooksPath=/dev/null \
     -c credential.helper= -c http.followRedirects=false \
-    -c protocol.file.allow=never clone "${git_clone_args[@]}" </dev/null; then
-    [[ -n $git_proxy ]] || die 'GitHub clone failed and no saved HTTP proxy is available.'
-    say 'Direct GitHub clone failed; retrying through the saved HTTP proxy.'
-    env -i HOME="$work/git-home" PATH=/usr/bin:/bin LANG=C GIT_CONFIG_NOSYSTEM=1 \
-        GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0 git -c core.hooksPath=/dev/null \
-        -c credential.helper= -c http.followRedirects=false -c http.proxy="$git_proxy" \
-        -c protocol.file.allow=never clone "${git_clone_args[@]}" </dev/null
-fi
+    -c protocol.file.allow=never clone --depth 1 --single-branch \
+    --no-tags --branch "$BRANCH" "$REPOSITORY" "$work/source" </dev/null
 
 # Do not assume the requested branch contains the panel or deployment files.
 for rel in server.py worker.py auth_helper.py mozvpn.py requirements.txt install.sh \

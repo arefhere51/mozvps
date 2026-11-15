@@ -13078,7 +13078,7 @@ def singbox_inbound_of(proxy_type: str) -> str:
 
 def singbox_config(local_port: int, upstream_host: str, upstream_port: int,
                    token: str, listen_host: str = "127.0.0.1",
-                   inbound: str = "http", protocol: str = "connect") -> dict:
+                   inbound: str = "http") -> dict:
     """sing-box config: <inbound> on <listen_host>:<local_port> ->
     http outbound to the Mozilla egress with Proxy-Authorization
     (fields server/server_port/headers/tls of the official sing-box
@@ -13099,11 +13099,7 @@ def singbox_config(local_port: int, upstream_host: str, upstream_port: int,
              "server": upstream_host,
              "server_port": upstream_port,
              "headers": {"Proxy-Authorization": f"Bearer {token}"},
-             "version": 3 if str(protocol).lower() == "masque" else 2,
-             "disable_version_fallback": False,
-             "tls": {"enabled": True, "server_name": upstream_host,
-                     "utls": {"enabled": True, "fingerprint": "chrome"},
-                     "record_fragment": True}}
+             "tls": {"enabled": True}}
         ],
     }
 
@@ -13182,8 +13178,7 @@ class SingBoxEngine:
             label = f"{srv['countryName']}/{srv['cityName']}"
             cfg = singbox_config(port, srv["protocolHost"], srv["protocolPort"],
                                  token, self.listen_host,
-                                 inbound=singbox_inbound_of(get_proxy_type()),
-                                 protocol=srv.get("protocol", "connect"))
+                                 inbound=singbox_inbound_of(get_proxy_type()))
             fname = (f"moz-{srv['countryCode']}-"
                      f"{srv.get('cityCode') or port}-{port}"
                      f"-{srv.get('serverIndex') or 0}.json")
@@ -13275,8 +13270,7 @@ class SingBoxEngine:
         for p in self.proxies:
             cfg = singbox_config(p["port"], p["host"], p["upstreamPort"], token,
                               self.listen_host,
-                              inbound=singbox_inbound_of(get_proxy_type()),
-                              protocol=p.get("protocol", "connect"))
+                              inbound=singbox_inbound_of(get_proxy_type()))
             p["path"] = self._write_config(self._fname_of(p), cfg)
         self.start_all()
 

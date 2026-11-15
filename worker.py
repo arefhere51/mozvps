@@ -24,9 +24,7 @@ import ipaddress
 import json
 import os
 from pathlib import Path
-import socket
 import sys
-import shutil
 import tempfile
 import threading
 
@@ -39,10 +37,8 @@ _ORIGINAL_BUILD_PROXIES = mozvpn.BuiltinProxyEngine.build_proxies
 _ORIGINAL_START_ALL = mozvpn.BuiltinProxyEngine.start_all
 _ORIGINAL_STOP_ALL = mozvpn.BuiltinProxyEngine.stop_all
 _ORIGINAL_CHECK_RUNNING = mozvpn.BuiltinProxyEngine.check_running
-_ORIGINAL_CONNECT_RESOLVED = mozvpn._connect_resolved_ips
 _BUILD_CONTEXT = threading.local()
 _BUILD_LOCK = threading.Lock()
-_DATA_HTTP_PROXY = None
 
 
 def data_directory():
@@ -55,39 +51,6 @@ def _diagnostic(message):
         print("mozvps worker: " + message, file=_DIAGNOSTICS, flush=True)
     except (OSError, ValueError):
         pass
-
-
-def _connect_data_via_http_proxy(ips, host, port, timeout):
-    """Create the Mozilla egress TCP socket through an optional HTTP proxy.
-
-    TLS and the Mozilla CONNECT/Bearer exchange still happen in the unchanged
-    core after this raw CONNECT tunnel is returned. With no data proxy set,
-    the original direct path is used byte-for-byte.
-    """
-    if _DATA_HTTP_PROXY is None:
-        return _ORIGINAL_CONNECT_RESOLVED(ips, host, port, timeout)
-    proxy_host, proxy_port = _DATA_HTTP_PROXY
-    raw = socket.create_connection((proxy_host, proxy_port), timeout=timeout)
-    try:
-        raw.settimeout(timeout)
-        target = f"[{host}]" if ':' in str(host) and not str(host).startswith('[') else str(host)
-        raw.sendall((f"CONNECT {target}:{int(port)} HTTP/1.1\r\n"
-                     f"Host: {target}:{int(port)}\r\n"
-                     "Proxy-Connection: keep-alive\r\n\r\n").encode('ascii'))
-        response = b''
-        while b'\r\n\r\n' not in response and len(response) <= 65536:
-            chunk = raw.recv(4096)
-            if not chunk:
-                break
-            response += chunk
-        line = response.split(b'\r\n', 1)[0].decode('latin-1', 'replace')
-        parts = line.split()
-        if len(parts) < 2 or parts[1] != '200':
-            raise OSError('HTTP data proxy CONNECT failed')
-        return raw
-    except Exception:
-        raw.close()
-        raise
 
 
 def _atomic_json(path, value):
@@ -280,7 +243,6 @@ def _prepare_core(path):
 
 
 def main():
-    global _DATA_HTTP_PROXY
     directory = data_directory()
     try:
         directory.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -298,7 +260,6 @@ def main():
                  "MOZVPN_TOTP", "MOZVPN_TOTP_SECRET"):
         os.environ.pop(name, None)
     proxy_url = ''
-    data_proxy = None
     try:
         with (directory / "preferences.json").open("r", encoding="utf-8") as source:
             preferences = json.load(source)
@@ -307,27 +268,16 @@ def main():
             port = preferences.get('mozilla_proxy_port')
             if host and type(port) is int and 1 <= port <= 65535 and not any(ch in host for ch in '\r\n\x00 /'):
                 proxy_url = f'http://{host}:{port}'
-        if preferences.get('mozilla_data_proxy_enabled'):
-            host = str(preferences.get('mozilla_proxy_host') or '').strip()
-            port = preferences.get('mozilla_proxy_port')
-            if host and type(port) is int and 1 <= port <= 65535 and not any(ch in host for ch in '\r\n\x00 /'):
-                data_proxy = (host, port)
     except (OSError, ValueError, TypeError, AttributeError):
         _diagnostic("could not read Mozilla proxy settings.")
-    _DATA_HTTP_PROXY = data_proxy
     mozvpn.port_for_location = _panel_port_for_location
-    mozvpn._connect_resolved_ips = _connect_data_via_http_proxy
     mozvpn.BuiltinProxyEngine.build_proxies = _panel_build_proxies
     mozvpn.BuiltinProxyEngine.start_all = _panel_start_all
     mozvpn.BuiltinProxyEngine.check_running = _panel_check_running
     mozvpn.BuiltinProxyEngine.stop_all = _panel_stop_all
-    # Prefer the external sing-box transport when the installer provided it.
-    # It gives the data plane HTTP/2/HTTP/3 support; builtin remains a safe
-    # fallback for upgrades where the binary is temporarily unavailable.
-    engine = "singbox" if shutil.which("sing-box") else "builtin"
     sys.argv = [str(Path(__file__).resolve()), "--config", str(directory / "core.json"),
                 "--proxy-type", "socks5", "--auto-rotate", "--local-proxy",
-                "--local-proxy-engine", engine, "--listen", bind,
+                "--local-proxy-engine", "builtin", "--listen", bind,
                 "--no-dns-relay", "--no-input", "--no-save"]
     if proxy_url:
         sys.argv.extend(["--api-proxy", proxy_url])

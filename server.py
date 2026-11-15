@@ -103,7 +103,6 @@ class Controller:
         self.preferences.setdefault('panel_port', 1234)
         self.preferences.setdefault('desired', True)
         self.preferences.setdefault('mozilla_proxy_enabled', False)
-        self.preferences.setdefault('mozilla_data_proxy_enabled', False)
         self.preferences.setdefault('mozilla_proxy_host', '127.0.0.1')
         self.preferences.setdefault('mozilla_proxy_port', 8080)
         # An existing damaged auth file must not silently reset to admin.
@@ -219,11 +218,10 @@ class Controller:
                 'locations': loc,
                 'panel_port': self.preferences['panel_port'],
                 'mozilla_proxy': {'enabled': bool(self.preferences.get('mozilla_proxy_enabled')),
-                                  'data_enabled': bool(self.preferences.get('mozilla_data_proxy_enabled')),
                                   'host': self.preferences.get('mozilla_proxy_host', '127.0.0.1'),
                                   'port': self.preferences.get('mozilla_proxy_port', 8080)}}
 
-    def save_mozilla_proxy(self, enabled, host, port, data_enabled=None):
+    def save_mozilla_proxy(self, enabled, host, port):
         if not isinstance(enabled, bool):
             raise ValueError('Proxy enabled state is invalid.')
         host = str(host or '').strip()
@@ -236,10 +234,7 @@ class Controller:
         if not 1 <= port <= 65535:
             raise ValueError('Proxy port must be between 1 and 65535.')
         with self.lock:
-            if data_enabled is None:
-                data_enabled = enabled
             self.preferences.update({'mozilla_proxy_enabled': enabled,
-                                     'mozilla_data_proxy_enabled': bool(data_enabled),
                                      'mozilla_proxy_host': host,
                                      'mozilla_proxy_port': port})
             self.prefs_save()
@@ -534,8 +529,7 @@ class Handler(BaseHTTPRequestHandler):
                 change_panel_port(port)
                 return self.reply(200, {'ok': True, 'message': 'پورت پنل تغییر کرد؛ از نشانی جدید استفاده کنید.'})
             if path == '/api/mozilla-proxy':
-                CTRL.save_mozilla_proxy(data.get('enabled'), data.get('host'), data.get('port'),
-                                        data.get('data_enabled'))
+                CTRL.save_mozilla_proxy(data.get('enabled'), data.get('host'), data.get('port'))
                 return self.reply(200, {'ok': True, 'message': 'تنظیم پروکسی Mozilla ذخیره شد.'})
             return self.reply(404, {'error': 'مسیر پیدا نشد.'})
         except ValueError as e:

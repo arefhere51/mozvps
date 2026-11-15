@@ -218,7 +218,6 @@
     if (document.activeElement !== $('mozilla-proxy-host')) $('mozilla-proxy-host').value = proxy.host || '127.0.0.1';
     if (document.activeElement !== $('mozilla-proxy-port')) $('mozilla-proxy-port').value = proxy.port == null ? '8080' : String(proxy.port);
     $('mozilla-proxy-enabled').checked = proxy.enabled === true;
-    $('mozilla-data-proxy-enabled').checked = proxy.data_enabled === true;
   }
 
   function renderAccounts(accounts) {
@@ -479,7 +478,6 @@
     withButton(button, async () => {
       await api('/api/mozilla-proxy', { method: 'POST', body: {
         enabled: $('mozilla-proxy-enabled').checked,
-        data_enabled: $('mozilla-data-proxy-enabled').checked,
         host: $('mozilla-proxy-host').value.trim(),
         port: Number($('mozilla-proxy-port').value)
       }});
