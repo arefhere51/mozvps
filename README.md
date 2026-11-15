@@ -48,7 +48,9 @@ Initial password: admin
 
 Change the initial password immediately. The panel can configure its port, manage service state, add or remove Mozilla accounts, configure location ports, show quota information, and display service events.
 
-The Persian panel also provides a Mozilla HTTP proxy switch. Enter the proxy host and port, enable it, and save. New account authentication and the worker's Mozilla control-plane requests use `http://HOST:PORT`. The actual SOCKS5 location/data tunnels remain direct and do not use this proxy. Disable the switch and save to return Mozilla login/control traffic to direct access; an active worker is restarted so the change takes effect. The HTTP proxy must support the `CONNECT` method for HTTPS requests.
+The Persian panel provides separate Mozilla HTTP proxy switches for Login/control traffic and for the actual location/data plane. The second switch is an optional upstream-proxy chain for restricted servers: it makes the worker's TCP connection to each Mozilla/Fastly egress through `http://HOST:PORT`, then the unchanged TLS and Bearer/CONNECT exchange continues inside that tunnel. Enable it only when the VPS cannot reach the egress directly. The HTTP proxy must support `CONNECT`; an active worker is restarted after saving.
+
+The worker now prefers the external `sing-box` engine when the installer has placed it in `/usr/local/bin`. Mozilla locations marked `masque` are emitted as HTTP/3-capable outbounds; regular locations use HTTP/2 with automatic lower-version fallback. TLS SNI, Chrome uTLS and TLS record fragmentation are enabled in those generated configs. If sing-box is unavailable during an upgrade, the worker falls back to the original builtin engine rather than refusing to start. The installer downloads the current Linux sing-box release for amd64, arm64 or armv7; this is the standard Linux engine, not the Android-only FoxyVPN `libbox.aar`.
 
 ### TLS on the same port
 

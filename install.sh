@@ -125,8 +125,45 @@ say 'Installing system prerequisites (git, Python, venv and native-build librari
 export DEBIAN_FRONTEND=noninteractive
 apt-get update </dev/null
 apt-get install -y --no-install-recommends \
-    ca-certificates git python3 python3-venv python3-dev \
+    ca-certificates curl git python3 python3-venv python3-dev \
     build-essential pkg-config libssl-dev libffi-dev zlib1g-dev libjpeg-dev </dev/null
+
+# The worker prefers sing-box for HTTP/2/HTTP/3 data-plane transport. Resolve
+# the current upstream Linux asset by architecture instead of pinning a stale
+# release URL into the installer.
+if ! command -v sing-box >/dev/null 2>&1; then
+    say 'Installing sing-box transport engine.'
+    sb_arch=$(case "$(uname -m)" in
+        x86_64|amd64) printf 'amd64';;
+        aarch64|arm64) printf 'arm64';;
+        armv7l|armv7) printf 'armv7';;
+        *) die "Unsupported sing-box architecture: $(uname -m)";;
+    esac)
+    sb_url=$(python3 - "$sb_arch" <<'PY'
+import json, sys, urllib.request
+arch = sys.argv[1]
+req = urllib.request.Request(
+    'https://api.github.com/repos/SagerNet/sing-box/releases/latest',
+    headers={'User-Agent': 'mozvps-installer'})
+with urllib.request.urlopen(req, timeout=20) as response:
+    release = json.load(response)
+for asset in release.get('assets', []):
+    name = asset.get('name', '')
+    if name.endswith('.tar.gz') and ('linux-' + arch) in name and 'amd64v3' not in name:
+        print(asset['browser_download_url'])
+        break
+else:
+    raise SystemExit('No sing-box Linux asset found for ' + arch)
+PY
+)
+    sb_tmp=$(mktemp -d /tmp/mozvps-singbox.XXXXXX)
+    curl -fsSL --retry 3 "$sb_url" -o "$sb_tmp/sing-box.tar.gz"
+    tar -xzf "$sb_tmp/sing-box.tar.gz" -C "$sb_tmp"
+    sb_bin=$(find "$sb_tmp" -type f -name sing-box -perm -u+x -print -quit)
+    [[ -n $sb_bin ]] || die 'Downloaded sing-box archive did not contain an executable.'
+    install -o root -g root -m 0755 "$sb_bin" /usr/local/bin/sing-box
+    rm -rf "$sb_tmp"
+fi
 
 # A private HOME and disabled Git system configuration prevent user-configured
 # insteadOf rewrites, credentials and hooks from redirecting the fixed URL.
