@@ -223,7 +223,7 @@ class Controller:
                                   'host': self.preferences.get('mozilla_proxy_host', '127.0.0.1'),
                                   'port': self.preferences.get('mozilla_proxy_port', 8080)}}
 
-    def save_mozilla_proxy(self, enabled, host, port, data_enabled=False):
+    def save_mozilla_proxy(self, enabled, host, port, data_enabled=None):
         if not isinstance(enabled, bool):
             raise ValueError('Proxy enabled state is invalid.')
         host = str(host or '').strip()
@@ -236,6 +236,8 @@ class Controller:
         if not 1 <= port <= 65535:
             raise ValueError('Proxy port must be between 1 and 65535.')
         with self.lock:
+            if data_enabled is None:
+                data_enabled = enabled
             self.preferences.update({'mozilla_proxy_enabled': enabled,
                                      'mozilla_data_proxy_enabled': bool(data_enabled),
                                      'mozilla_proxy_host': host,
@@ -533,7 +535,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(200, {'ok': True, 'message': 'پورت پنل تغییر کرد؛ از نشانی جدید استفاده کنید.'})
             if path == '/api/mozilla-proxy':
                 CTRL.save_mozilla_proxy(data.get('enabled'), data.get('host'), data.get('port'),
-                                        data.get('data_enabled', False))
+                                        data.get('data_enabled'))
                 return self.reply(200, {'ok': True, 'message': 'تنظیم پروکسی Mozilla ذخیره شد.'})
             return self.reply(404, {'error': 'مسیر پیدا نشد.'})
         except ValueError as e:

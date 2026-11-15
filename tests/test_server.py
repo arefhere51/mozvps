@@ -119,7 +119,7 @@ class PanelTest(unittest.TestCase):
         self.assertEqual(status, 200, body)
         status, body = self.req('/api/status')
         self.assertEqual(status, 200)
-        self.assertEqual(body['mozilla_proxy'], {'enabled': True, 'data_enabled': False,
+        self.assertEqual(body['mozilla_proxy'], {'enabled': True, 'data_enabled': True,
                                                  'host': '127.0.0.1', 'port': 18080})
         saved = json.loads((self.data / 'preferences.json').read_text())
         self.assertTrue(saved['mozilla_proxy_enabled'])
