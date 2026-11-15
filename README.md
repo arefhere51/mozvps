@@ -48,7 +48,7 @@ Initial password: admin
 
 Change the initial password immediately. The panel can configure its port, manage service state, add or remove Mozilla accounts, configure location ports, show quota information, and display service events.
 
-The Persian panel also provides a Mozilla HTTP proxy switch. Enter the proxy host and port, enable it, and save. New account authentication and the worker's Mozilla control-plane requests then use `http://HOST:PORT`. Disable the switch and save to return to direct access; an active worker is restarted so the change takes effect. This proxy is for Mozilla control-plane traffic and is separate from the public SOCKS5 listeners.
+The Persian panel also provides a Mozilla HTTP proxy switch. Enter the proxy host and port, enable it, and save. New account authentication and the worker's Mozilla control-plane requests use `http://HOST:PORT`. The actual SOCKS5 location/data tunnels remain direct and do not use this proxy. Disable the switch and save to return Mozilla login/control traffic to direct access; an active worker is restarted so the change takes effect. The HTTP proxy must support the `CONNECT` method for HTTPS requests.
 
 ### TLS on the same port
 
