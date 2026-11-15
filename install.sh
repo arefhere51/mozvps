@@ -155,9 +155,31 @@ for asset in release.get('assets', []):
 else:
     raise SystemExit('No sing-box Linux asset found for ' + arch)
 PY
-)
+    )
     sb_tmp=$(mktemp -d /tmp/mozvps-singbox.XXXXXX)
-    curl -fsSL --retry 3 "$sb_url" -o "$sb_tmp/sing-box.tar.gz"
+    # Some Iranian VPS networks reset GitHub release-assets TLS while raw
+    # GitHub remains reachable. If the panel already has an HTTP proxy, use
+    # it only for this dependency download; application data settings are not
+    # changed by the installer.
+    if ! curl -fsSL --retry 3 "$sb_url" -o "$sb_tmp/sing-box.tar.gz"; then
+        sb_proxy=$(python3 - <<'PY'
+import json
+try:
+    with open('/var/lib/mozvps/preferences.json', encoding='utf-8') as f:
+        p=json.load(f)
+    if p.get('mozilla_proxy_enabled'):
+        host=str(p.get('mozilla_proxy_host') or '').strip()
+        port=p.get('mozilla_proxy_port')
+        if host and type(port) is int and 1 <= port <= 65535:
+            print(f'http://{host}:{port}')
+except Exception:
+    pass
+PY
+)
+        [[ -n $sb_proxy ]] || die 'Direct download of sing-box failed and no saved HTTP proxy is available.'
+        say 'Direct GitHub asset download failed; retrying sing-box through the saved HTTP proxy.'
+        curl -fsSL --retry 3 -x "$sb_proxy" "$sb_url" -o "$sb_tmp/sing-box.tar.gz"
+    fi
     tar -xzf "$sb_tmp/sing-box.tar.gz" -C "$sb_tmp"
     sb_bin=$(find "$sb_tmp" -type f -name sing-box -perm -u+x -print -quit)
     [[ -n $sb_bin ]] || die 'Downloaded sing-box archive did not contain an executable.'
